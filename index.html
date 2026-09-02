@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI Stock Chart Analyzer</title>
+    <meta name="description" content="AI Stock Chart Analyzer and Autonomous Trading Platform" />
+    <script>
+      // Gracefully handle WebSocket connections while filtering Vite HMR noise
+      if (typeof window !== 'undefined' && window.WebSocket) {
+        const NativeWS = window.WebSocket;
+        window.WebSocket = function (url, protocols) {
+          try {
+            // Allow our real application market stream WebSocket
+            if (typeof url === 'string' && url.includes('/ws/market')) {
+              return new NativeWS(url, protocols);
+            }
+            if (typeof url === 'string' && (url.includes('/vite-hmr') || url.includes('token='))) {
+              // Return a mock benign websocket for Vite HMR
+              const fakeWS = {
+                readyState: 3, // CLOSED
+                CLOSED: 3,
+                CLOSING: 2,
+                CONNECTING: 0,
+                OPEN: 1,
+                url: url,
+                bufferedAmount: 0,
+                extensions: '',
+                protocol: '',
+                binaryType: 'blob',
+                onopen: null,
+                onclose: null,
+                onerror: null,
+                onmessage: null,
+                send: function () {},
+                close: function () {},
+                addEventListener: function () {},
+                removeEventListener: function () {},
+                dispatchEvent: function () { return true; },
+              };
+              return fakeWS;
+            }
+            return new NativeWS(url, protocols);
+          } catch (e) {
+            return new NativeWS(url, protocols);
+          }
+        };
+        window.WebSocket.prototype = NativeWS.prototype;
+      }
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+

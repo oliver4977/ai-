@@ -1,0 +1,7 @@
+{
+  "name": "AI Stock Chart Analyzer",
+  "description": "실시간 시장 기반 AI 투자자 시뮬레이션 및 코스피·코스닥·나스닥 전문 증권 트레이딩 터미널",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+

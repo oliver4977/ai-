@@ -1,0 +1,35 @@
+name: Autonomous AI Fund Scheduler
+
+on:
+  schedule:
+    # Runs every 15 minutes UTC (Cron schedule for continuous cloud monitoring)
+    - cron: '*/15 * * * *'
+  workflow_dispatch: # Allows manual trigger from GitHub Actions tab
+
+jobs:
+  run-ai-fund-step:
+    name: Run AI Scanning & Trading Engine
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js Environment
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci || npm install
+
+      - name: Run Cloud AI Autopilot Trading Step
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          TOSS_API_KEY: ${{ secrets.TOSS_API_KEY }}
+          TOSS_API_SECRET: ${{ secrets.TOSS_API_SECRET }}
+          TOSS_ACCOUNT_NO: ${{ secrets.TOSS_ACCOUNT_NO }}
+        run: |
+          npx tsx scripts/run-cloud-cron.ts
