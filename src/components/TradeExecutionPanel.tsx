@@ -262,8 +262,8 @@ export const TradeExecutionPanel: React.FC<TradeExecutionPanelProps> = ({
             </span>
           </div>
           <div className="flex items-center justify-between text-zinc-400 text-[10px]">
-            <span>수수료 및 증권거래세 (0.015%)</span>
-            <span>{new Intl.NumberFormat('ko-KR').format(Math.round(totalAmountKRW * 0.00015))}원</span>
+            <span>수수료 및 증권거래세 (가상거래 무료)</span>
+            <span className="text-zinc-500">0원</span>
           </div>
         </div>
 

@@ -2,9 +2,16 @@ name: Autonomous AI Fund Scheduler
 
 on:
   schedule:
-    # Runs every 15 minutes UTC (Cron schedule for continuous cloud monitoring)
+    # Runs every 15 minutes UTC (Continuous 24/7 cloud monitoring)
     - cron: '*/15 * * * *'
   workflow_dispatch: # Allows manual trigger from GitHub Actions tab
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ai-fund-scheduler
+  cancel-in-progress: false
 
 jobs:
   run-ai-fund-step:
@@ -15,6 +22,8 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
+        with:
+          persist-credentials: true
 
       - name: Setup Node.js Environment
         uses: actions/setup-node@v4
@@ -32,3 +41,18 @@ jobs:
           TOSS_ACCOUNT_NO: ${{ secrets.TOSS_ACCOUNT_NO }}
         run: |
           npx tsx scripts/run-cloud-cron.ts
+
+      - name: Persist Updated Trading State
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          if [ -f server_fund_storage.json ]; then
+            git add server_fund_storage.json
+            if ! git diff-index --quiet HEAD --; then
+              git commit -m "chore(data): sync ai trading state [skip ci]"
+              git push
+            else
+              echo "No state changes to commit."
+            fi
+          fi
+

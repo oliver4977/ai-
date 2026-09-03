@@ -261,11 +261,14 @@ export interface AIExperimentMetric {
 }
 
 export interface AITradeRationale {
-  technical: string; // RSI, MACD, EMA(9/21/50/200), 볼린저 스퀴즈
-  historicalData: string; // 과거 6개월 누적 매물대(POC), 역사적 지지저항 돌파
-  orderFlowImbalance: string; // 호가창 OFI, 매수잔량비율, 체결강도
-  newsCatalyst: string; // 실시간 뉴스 감정점수, 공시 파급력
-  exitStrategy: string; // 익절/손절/트레일링스탑 룰
+  marketAnalysis?: string; // 시장 및 섹터 동향 분석
+  valuationOrMomentum?: string; // 가격 변동률 및 밸류에이션/모멘텀 분석
+  technical?: string; // 기술적 지표 분석
+  historicalData?: string; // 과거 매물대 및 지지저항
+  orderFlowImbalance?: string; // 호가 및 거래량 흐름
+  newsCatalyst?: string; // 실시간 뉴스 감정 및 기업 이슈
+  riskManagement?: string; // 익절/손절 및 리스크 관리
+  exitStrategy?: string; // 청산 전략
 }
 
 export interface AIFundDecision {
@@ -319,7 +322,10 @@ export interface ApiQuotaUsage {
   remainingCalls: number; // 20 - dailyApiCalls
   lastShortTermCallTime?: number; // timestamp
   lastLongTermCallTime?: number; // timestamp
+  lastShortTermFailed?: boolean;
+  lastLongTermFailed?: boolean;
   lastLongTermSlot?: string; // '09:00' | '18:00'
+  executedSlots?: string[]; // ['2025-02-27-09:00', '2025-02-27-18:00']
   currentDate: string; // 'YYYY-MM-DD'
   isLimitReached: boolean;
   limitMessage?: string;
