@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { 
   SimulationAccount, 
   HoldingStock, 
@@ -7,6 +7,7 @@ import {
   ExchangeCategory,
   ApiQuotaUsage
 } from '../types';
+import { formatKST, parseTimestampToMs } from '../utils/dateFormatter';
 import { 
   Wallet, 
   TrendingUp, 
@@ -90,6 +91,15 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
   const kosdaqPct = Number(((kosdaqTotal / totalAsset) * 100).toFixed(1));
   const nasdaqPct = Number(((nasdaqTotal / totalAsset) * 100).toFixed(1));
   const cashPct = Number(((cashTotal / totalAsset) * 100).toFixed(1));
+
+  // Sort orders descending by execution time
+  const sortedOrders = useMemo(() => {
+    return [...currentDisplayedAccount.orders].sort((a, b) => {
+      const tA = parseTimestampToMs(a.executedAt || a.timestamp);
+      const tB = parseTimestampToMs(b.executedAt || b.timestamp);
+      return tB - tA;
+    });
+  }, [currentDisplayedAccount.orders]);
 
   return (
     <div className="space-y-4 font-sans">
@@ -490,7 +500,7 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
             <table className="w-full text-left text-xs font-sans">
               <thead className="bg-[#090d14] text-zinc-400 font-semibold border-b border-zinc-800 text-[11px]">
                 <tr>
-                  <th className="py-3 px-4">체결일시</th>
+                  <th className="py-3 px-4">체결일시 (KST)</th>
                   <th className="py-3 px-3">주문ID</th>
                   <th className="py-3 px-4">종목명 / 티커</th>
                   <th className="py-3 px-3">구분</th>
@@ -498,25 +508,33 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
                   <th className="py-3 px-3 text-right">체결단가</th>
                   <th className="py-3 px-3 text-right">체결수량</th>
                   <th className="py-3 px-3 text-right">총 체결금액</th>
+                  <th className="py-3 px-3 text-center">수수료</th>
                   <th className="py-3 px-3 text-center">실행 주체</th>
                   <th className="py-3 px-4">AI 투자 사유 (Reasoning)</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-850 font-mono">
-                {currentDisplayedAccount.orders.length > 0 ? (
-                  currentDisplayedAccount.orders.map((ord) => {
+                {sortedOrders.length > 0 ? (
+                  sortedOrders.map((ord) => {
                     const isBuy = ord.side === 'BUY';
+                    const isKR = ord.market === 'KR' || /^\d{6}$/.test(ord.ticker) || ord.currency === 'KRW';
+                    const formattedTime = formatKST(ord.executedAt || ord.timestamp);
                     return (
                       <tr key={ord.id} className="hover:bg-zinc-850/60 transition-colors">
-                        <td className="py-3 px-4 text-zinc-400 text-[11px]">{ord.timestamp}</td>
+                        <td className="py-3 px-4 text-zinc-300 text-[11px] whitespace-nowrap">
+                          {formattedTime}
+                        </td>
                         <td className="py-3 px-3 text-zinc-500 text-[10px]">
-                          <div>{ord.id}</div>
+                          <div className="font-mono text-zinc-400">{ord.id}</div>
                           {ord.requestId && <div className="text-[9px] text-zinc-600 font-mono">{ord.requestId}</div>}
                         </td>
                         <td className="py-3 px-4 font-sans">
                           <div className="flex items-center gap-1 flex-wrap">
                             <span className="font-bold text-white">{ord.name}</span>
                             <span className="text-[10px] text-zinc-400 font-mono">({ord.ticker})</span>
+                            <span className="text-[9px] px-1 py-0.5 rounded bg-zinc-800 text-zinc-400">
+                              {ord.exchange || (isKR ? 'KOSPI' : 'NASDAQ')}
+                            </span>
                             {ord.isFallbackGenerated && (
                               <span className="text-[9px] px-1 py-0.2 rounded font-mono bg-red-950/80 text-red-300 border border-red-800">
                                 ⚠️ Fallback 과거기록
@@ -535,10 +553,20 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
                         </td>
                         <td className="py-3 px-3 text-zinc-300 text-[11px]">{ord.type}</td>
                         <td className="py-3 px-3 text-right font-bold text-zinc-100">
-                          {ord.ticker.length === 6 ? `${formatKRW(ord.price)}원` : `$${ord.price.toFixed(2)}`}
+                          {isKR ? `${formatKRW(ord.price)}원` : `$${Number(ord.price).toFixed(2)}`}
                         </td>
-                        <td className="py-3 px-3 text-right text-zinc-200 font-bold">{ord.quantity}주</td>
-                        <td className="py-3 px-3 text-right font-bold text-white">{formatKRW(ord.totalAmount)}원</td>
+                        <td className="py-3 px-3 text-right text-zinc-200 font-bold">{ord.quantity.toLocaleString()}주</td>
+                        <td className="py-3 px-3 text-right font-bold text-white whitespace-nowrap">
+                          {formatKRW(ord.totalAmount)}원
+                          {!isKR && ord.totalAmountUSD && (
+                            <div className="text-[10px] text-zinc-400 font-normal">(${ord.totalAmountUSD.toFixed(2)})</div>
+                          )}
+                        </td>
+                        <td className="py-3 px-3 text-center">
+                          <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-950/70 text-emerald-400 border border-emerald-800">
+                            0원 (면제)
+                          </span>
+                        </td>
                         <td className="py-3 px-3 text-center">
                           <span
                             className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
@@ -558,7 +586,7 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
                   })
                 ) : (
                   <tr>
-                    <td colSpan={10} className="py-8 text-center text-zinc-500 font-sans">
+                    <td colSpan={11} className="py-8 text-center text-zinc-500 font-sans">
                       체결된 주문 내역이 없습니다. (초기 원화 예수금 10억 원 가용 상태)
                     </td>
                   </tr>

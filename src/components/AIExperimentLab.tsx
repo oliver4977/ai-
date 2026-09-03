@@ -7,6 +7,7 @@ import {
   ExchangeCategory,
   ApiQuotaUsage
 } from '../types';
+import { formatKST, formatKSTTime } from '../utils/dateFormatter';
 import { 
   Bot, 
   Zap, 
@@ -601,7 +602,7 @@ export const AIExperimentLab: React.FC<AIExperimentLabProps> = ({
           {liveThoughts.length > 0 ? (
             liveThoughts.map((thought) => (
               <div key={thought.id} className="flex items-start gap-2 text-zinc-300 py-0.5 border-b border-zinc-900">
-                <span className="text-zinc-500 text-[10px] min-w-max">{thought.timestamp}</span>
+                <span className="text-zinc-500 text-[10px] min-w-max">{formatKSTTime(thought.timestamp)}</span>
                 <span className={`px-1.5 py-0.2 rounded text-[10px] font-bold min-w-max ${
                   thought.type === 'EXECUTE_BUY' ? 'bg-red-950 text-red-300 border border-red-800' :
                   thought.type === 'EXECUTE_SELL' ? 'bg-blue-950 text-blue-300 border border-blue-800' :
@@ -750,6 +751,9 @@ export const AIExperimentLab: React.FC<AIExperimentLabProps> = ({
                               {decision.requestId}
                             </span>
                           )}
+                          <span className="text-[10px] px-1.5 py-0.2 bg-zinc-850 text-zinc-400 border border-zinc-750 rounded font-mono">
+                            ⏱️ {formatKST(decision.executedAt || decision.timestamp)}
+                          </span>
                           {decision.isFallbackGenerated ? (
                             <span className="text-[10px] px-1.5 py-0.2 bg-red-950 text-red-300 border border-red-800 rounded font-mono font-bold">
                               ⚠️ 과거 Fallback 기록 (Legacy)

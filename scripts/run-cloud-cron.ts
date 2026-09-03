@@ -25,10 +25,13 @@ async function main() {
 
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
-    console.warn('⚠️ WARNING: GEMINI_API_KEY is not configured in GitHub Secrets.');
-    console.warn('Please add GEMINI_API_KEY to Repository Settings -> Secrets and variables -> Actions.');
-    process.exit(0);
+    console.error('❌ FATAL: GEMINI_API_KEY is not configured in GitHub Secrets!');
+    console.error('Please ensure the secret name is exactly "GEMINI_API_KEY" in Repository Settings -> Secrets and variables -> Actions.');
+    process.exit(1);
   }
+
+  const maskedKey = apiKey.length > 8 ? `${apiKey.slice(0, 4)}...${apiKey.slice(-4)}` : '***';
+  console.log(`🔑 GEMINI_API_KEY detected successfully: ${maskedKey}`);
 
   const aiClient = new GoogleGenAI({ apiKey });
 

@@ -174,24 +174,28 @@ export type OrderStatus = 'COMPLETED' | 'PENDING' | 'CANCELLED' | 'REJECTED_MARK
 export interface OrderRecord {
   id: string;
   requestId?: string;
-  timestamp: string;
+  executedAt?: string; // Authoritative UTC ISO timestamp (e.g. "2026-09-02T10:01:25.123Z")
+  timestamp: string; // ISO or formatted timestamp
   ticker: string;
   name: string;
   exchange: ExchangeCategory;
+  market?: MarketType;
+  currency?: 'KRW' | 'USD';
   side: OrderSide;
   type: OrderType;
   price: number;
   quantity: number;
-  totalAmount: number;
-  fee: number;
+  totalAmount: number; // KRW Total Amount
+  totalAmountUSD?: number; // USD Total Amount for US stocks
+  fee: number; // Virtual trade fee is strictly 0
   status: OrderStatus;
   executedBy: 'USER' | 'AI_AGENT';
   strategyTrack?: StrategyTrackType;
   reasoning?: string;
   aiProvider?: string;
   aiModel?: string;
-  aiRequestTime?: string;
-  aiResponseTime?: string;
+  aiRequestTime?: string; // UTC ISO string when AI analysis began
+  aiResponseTime?: string; // UTC ISO string when AI response was received
   isFallbackGenerated?: boolean;
 }
 
@@ -274,15 +278,18 @@ export interface AITradeRationale {
 export interface AIFundDecision {
   id: string;
   requestId?: string;
+  executedAt?: string; // Authoritative UTC ISO execution timestamp
   timestamp: string;
   action: 'BUY' | 'SELL' | 'SCALP' | 'HOLD';
   ticker: string;
   name: string;
   market: MarketType;
   exchange: ExchangeCategory;
+  currency?: 'KRW' | 'USD';
   price: number;
   quantity: number;
   amountKRW: number;
+  amountUSD?: number;
   confidence: number; // 0 to 100
   expectedProfitPercent: number;
   stopLossPercent: number;

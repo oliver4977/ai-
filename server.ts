@@ -622,7 +622,7 @@ ${userMessage}
   });
 
   // POST /api/trade/order - Execute real market simulation order with strict regular market validation
-  app.post("/api/trade/order", (req, res) => {
+  app.post("/api/trade/order", async (req, res) => {
     try {
       const {
         ticker,
@@ -637,21 +637,21 @@ ${userMessage}
         executedBy,
       } = req.body;
 
-      if (!ticker || !price || !quantity || !side) {
+      if (!ticker || !quantity || !side) {
         return res.status(400).json({
           success: false,
-          error: "필수 주문 정보(종목코드, 주문가격, 주문수량, 매수/매도 구분)가 누락되었습니다.",
+          error: "필수 주문 정보(종목코드, 주문수량, 매수/매도 구분)가 누락되었습니다.",
         });
       }
 
-      const result = executeManualTrade({
+      const result = await executeManualTrade({
         ticker,
         name: name || ticker,
         exchange,
         market: market || (/^\d{6}$/.test(ticker) ? 'KR' : 'US'),
         side,
         type: type || 'LIMIT',
-        price: Number(price),
+        price: price ? Number(price) : undefined,
         quantity: Number(quantity),
         accountType: accountType || 'SHORT_TERM',
         executedBy: executedBy || 'USER',
