@@ -247,17 +247,15 @@
     }
   },
   "quotaUsage": {
-    "currentDate": "2026-09-03",
-    "dailyApiCalls": 2,
-    "shortTermCalls": 1,
-    "longTermCalls": 1,
-    "remainingCalls": 18,
+    "currentDate": "2026-09-04",
+    "dailyApiCalls": 0,
+    "shortTermCalls": 0,
+    "longTermCalls": 0,
+    "remainingCalls": 20,
     "lastShortTermCallTime": 1788410010000,
     "lastLongTermCallTime": 1788410018098,
-    "lastLongTermSlot": "SLOT_09_00",
-    "executedSlots": [
-      "SLOT_09_00"
-    ],
+    "lastLongTermSlot": "",
+    "executedSlots": [],
     "lastShortTermFailed": false,
     "lastLongTermFailed": false,
     "isLimitReached": false,
@@ -340,6 +338,13 @@
   ],
   "liveThoughts": [
     {
+      "id": "TH-QUOTA-RESET-169893",
+      "timestamp": "2026-09-03T15:09:29.893Z",
+      "type": "SCAN",
+      "message": "[일일 AI 한도 초기화] 새 날짜(2026-09-04)가 시작되어 AI 일일 분석 한도(단기 18회 + 중장기 2회 = 총 20회)가 리셋되었습니다.",
+      "score": 99
+    },
+    {
       "id": "TH-LT-BUY-1788410018098",
       "timestamp": "2026-09-03T04:33:38.098Z",
       "ticker": "000270",
@@ -353,10 +358,10 @@
   "isAutoBotActive": true,
   "marketStatusKR": {
     "isOpen": false,
-    "statusText": "국내 정규장 마감"
+    "statusText": "국내 증시 마감"
   },
   "marketStatusUS": {
     "isOpen": false,
-    "statusText": "미국 정규장 마감"
+    "statusText": "미국 증시 마감"
   }
 }
