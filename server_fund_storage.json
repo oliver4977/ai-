@@ -247,7 +247,7 @@
     }
   },
   "quotaUsage": {
-    "currentDate": "2026-09-04",
+    "currentDate": "2026-09-05",
     "dailyApiCalls": 0,
     "shortTermCalls": 0,
     "longTermCalls": 0,
@@ -337,6 +337,13 @@
     }
   ],
   "liveThoughts": [
+    {
+      "id": "TH-QUOTA-RESET-134223",
+      "timestamp": "2026-09-04T17:48:54.223Z",
+      "type": "SCAN",
+      "message": "[일일 AI 한도 초기화] 새 날짜(2026-09-05)가 시작되어 AI 일일 분석 한도(단기 18회 + 중장기 2회 = 총 20회)가 리셋되었습니다.",
+      "score": 99
+    },
     {
       "id": "TH-QUOTA-RESET-169893",
       "timestamp": "2026-09-03T15:09:29.893Z",
