@@ -3,34 +3,31 @@
     "accountNumber": "883-91-0428-10",
     "accountName": "Alpha-Q 10억 AI 자율운용 펀드 (단기 5억 + 중장기 5억)",
     "initialCapitalKRW": 1000000000,
-    "cashKRW": 900110100,
+    "cashKRW": 998906600,
     "cashUSD": 0,
     "exchangeRateUSD_KRW": 1400,
-    "holdings": [
+    "holdings": [],
+    "orders": [
       {
+        "id": "ORD-LT-GUARD-959212-ES86",
+        "executedAt": "2026-09-05T15:25:59.212Z",
+        "timestamp": "2026-09-05T15:25:59.212Z",
         "ticker": "000270",
         "name": "기아",
         "exchange": "KOSPI",
         "market": "KR",
         "currency": "KRW",
+        "side": "SELL",
+        "type": "MARKET",
+        "price": 126500,
         "quantity": 781,
-        "averageBuyPrice": 127900,
-        "currentPrice": 127800,
-        "totalPurchaseAmount": 99889900,
-        "totalEvaluationAmount": 99811800,
-        "evaluationProfit": -78100,
-        "profitRate": -0.08,
-        "allocationPercent": 9.98,
-        "aiVerdict": "STRONG_BUY",
-        "aiTargetPrice": 153480,
-        "aiStopLoss": 127261,
+        "totalAmount": 98796500,
+        "fee": 0,
+        "status": "COMPLETED",
+        "executedBy": "AI_AGENT",
         "strategyTrack": "VALUE_COMPOUNDING",
-        "buyTimestamp": 1788410018098,
-        "aiActionNote": "[중장기 AI (Gemini)] 체결가: 127,900원, 목표가: 153,480 (+20%)",
-        "lastUpdated": "2026-09-03T04:33:38.098Z"
-      }
-    ],
-    "orders": [
+        "reasoning": "[15초 실시간 리스크 가드 자동 체결] 기아 구조적 손절(Structural Stop-Loss) 도달 (781주 @ 126,500원, 실현손익: -1.09%)"
+      },
       {
         "id": "ORD-LT-018098-0J2N",
         "requestId": "REQ-LT-20260903-1WQRF",
@@ -57,9 +54,9 @@
         "reasoning": "[중장기 AI 매수 체결] 기아 781주 (1.00억 원). 사유: 낮은 밸류에이션 멀티플(저PER/저PBR)과 강력한 현금 창출력 및 주주환원 정책을 바탕으로 높은 안전마진을 확보한 기아(000270)를 포트폴리오의 핵심 가치주로 편입합니다."
       }
     ],
-    "totalAssetKRW": 999921900,
-    "totalEvaluationProfitKRW": -78100,
-    "totalProfitRate": -0.01,
+    "totalAssetKRW": 998906600,
+    "totalEvaluationProfitKRW": -1093400,
+    "totalProfitRate": -0.11,
     "dailyProfitKRW": 0,
     "dailyProfitRate": 0,
     "aiAutoTradeEnabled": true,
@@ -70,41 +67,38 @@
       "dayTradeCapKRW": 500000000,
       "valueCompoundingCapKRW": 500000000,
       "dayTradeCurrentAllocKRW": 0,
-      "valueCompoundingCurrentAllocKRW": 99811800
+      "valueCompoundingCurrentAllocKRW": 0
     }
   },
   "masterAccount": {
     "accountNumber": "883-91-0428-10",
     "accountName": "Alpha-Q 10억 AI 자율운용 펀드 (단기 5억 + 중장기 5억)",
     "initialCapitalKRW": 1000000000,
-    "cashKRW": 900110100,
+    "cashKRW": 998906600,
     "cashUSD": 0,
     "exchangeRateUSD_KRW": 1400,
-    "holdings": [
+    "holdings": [],
+    "orders": [
       {
+        "id": "ORD-LT-GUARD-959212-ES86",
+        "executedAt": "2026-09-05T15:25:59.212Z",
+        "timestamp": "2026-09-05T15:25:59.212Z",
         "ticker": "000270",
         "name": "기아",
         "exchange": "KOSPI",
         "market": "KR",
         "currency": "KRW",
+        "side": "SELL",
+        "type": "MARKET",
+        "price": 126500,
         "quantity": 781,
-        "averageBuyPrice": 127900,
-        "currentPrice": 127800,
-        "totalPurchaseAmount": 99889900,
-        "totalEvaluationAmount": 99811800,
-        "evaluationProfit": -78100,
-        "profitRate": -0.08,
-        "allocationPercent": 9.98,
-        "aiVerdict": "STRONG_BUY",
-        "aiTargetPrice": 153480,
-        "aiStopLoss": 127261,
+        "totalAmount": 98796500,
+        "fee": 0,
+        "status": "COMPLETED",
+        "executedBy": "AI_AGENT",
         "strategyTrack": "VALUE_COMPOUNDING",
-        "buyTimestamp": 1788410018098,
-        "aiActionNote": "[중장기 AI (Gemini)] 체결가: 127,900원, 목표가: 153,480 (+20%)",
-        "lastUpdated": "2026-09-03T04:33:38.098Z"
-      }
-    ],
-    "orders": [
+        "reasoning": "[15초 실시간 리스크 가드 자동 체결] 기아 구조적 손절(Structural Stop-Loss) 도달 (781주 @ 126,500원, 실현손익: -1.09%)"
+      },
       {
         "id": "ORD-LT-018098-0J2N",
         "requestId": "REQ-LT-20260903-1WQRF",
@@ -131,9 +125,9 @@
         "reasoning": "[중장기 AI 매수 체결] 기아 781주 (1.00억 원). 사유: 낮은 밸류에이션 멀티플(저PER/저PBR)과 강력한 현금 창출력 및 주주환원 정책을 바탕으로 높은 안전마진을 확보한 기아(000270)를 포트폴리오의 핵심 가치주로 편입합니다."
       }
     ],
-    "totalAssetKRW": 999921900,
-    "totalEvaluationProfitKRW": -78100,
-    "totalProfitRate": -0.01,
+    "totalAssetKRW": 998906600,
+    "totalEvaluationProfitKRW": -1093400,
+    "totalProfitRate": -0.11,
     "dailyProfitKRW": 0,
     "dailyProfitRate": 0,
     "aiAutoTradeEnabled": true,
@@ -144,7 +138,7 @@
       "dayTradeCapKRW": 500000000,
       "valueCompoundingCapKRW": 500000000,
       "dayTradeCurrentAllocKRW": 0,
-      "valueCompoundingCurrentAllocKRW": 99811800
+      "valueCompoundingCurrentAllocKRW": 0
     }
   },
   "shortTermAccount": {
@@ -176,34 +170,31 @@
     "accountNumber": "883-91-0428-10-B",
     "accountName": "중장기 가치투자 AI 계좌 (5억원)",
     "initialCapitalKRW": 500000000,
-    "cashKRW": 400110100,
+    "cashKRW": 498906600,
     "cashUSD": 0,
     "exchangeRateUSD_KRW": 1400,
-    "holdings": [
+    "holdings": [],
+    "orders": [
       {
+        "id": "ORD-LT-GUARD-959212-ES86",
+        "executedAt": "2026-09-05T15:25:59.212Z",
+        "timestamp": "2026-09-05T15:25:59.212Z",
         "ticker": "000270",
         "name": "기아",
         "exchange": "KOSPI",
         "market": "KR",
         "currency": "KRW",
+        "side": "SELL",
+        "type": "MARKET",
+        "price": 126500,
         "quantity": 781,
-        "averageBuyPrice": 127900,
-        "currentPrice": 127800,
-        "totalPurchaseAmount": 99889900,
-        "totalEvaluationAmount": 99811800,
-        "evaluationProfit": -78100,
-        "profitRate": -0.08,
-        "allocationPercent": 19.96,
-        "aiVerdict": "STRONG_BUY",
-        "aiTargetPrice": 153480,
-        "aiStopLoss": 127261,
+        "totalAmount": 98796500,
+        "fee": 0,
+        "status": "COMPLETED",
+        "executedBy": "AI_AGENT",
         "strategyTrack": "VALUE_COMPOUNDING",
-        "buyTimestamp": 1788410018098,
-        "aiActionNote": "[중장기 AI (Gemini)] 체결가: 127,900원, 목표가: 153,480 (+20%)",
-        "lastUpdated": "2026-09-03T04:33:38.098Z"
-      }
-    ],
-    "orders": [
+        "reasoning": "[15초 실시간 리스크 가드 자동 체결] 기아 구조적 손절(Structural Stop-Loss) 도달 (781주 @ 126,500원, 실현손익: -1.09%)"
+      },
       {
         "id": "ORD-LT-018098-0J2N",
         "requestId": "REQ-LT-20260903-1WQRF",
@@ -230,9 +221,9 @@
         "reasoning": "[중장기 AI 매수 체결] 기아 781주 (1.00억 원). 사유: 낮은 밸류에이션 멀티플(저PER/저PBR)과 강력한 현금 창출력 및 주주환원 정책을 바탕으로 높은 안전마진을 확보한 기아(000270)를 포트폴리오의 핵심 가치주로 편입합니다."
       }
     ],
-    "totalAssetKRW": 499921900,
-    "totalEvaluationProfitKRW": -78100,
-    "totalProfitRate": -0.02,
+    "totalAssetKRW": 498906600,
+    "totalEvaluationProfitKRW": -1093400,
+    "totalProfitRate": -0.22,
     "dailyProfitKRW": 0,
     "dailyProfitRate": 0,
     "aiAutoTradeEnabled": true,
@@ -247,7 +238,7 @@
     }
   },
   "quotaUsage": {
-    "currentDate": "2026-09-05",
+    "currentDate": "2026-09-06",
     "dailyApiCalls": 0,
     "shortTermCalls": 0,
     "longTermCalls": 0,
@@ -338,6 +329,22 @@
   ],
   "liveThoughts": [
     {
+      "id": "TH-GUARD-LT-959213",
+      "timestamp": "2026-09-05T15:25:59.212Z",
+      "ticker": "000270",
+      "stockName": "기아",
+      "type": "EXECUTE_SELL",
+      "message": "[중장기 리스크 가드 자동 매도] 기아 구조적 손절(Structural Stop-Loss) 기준가 도달로 가치 실현/손절 청산 완료 (수익률: -1.09%).",
+      "score": 99
+    },
+    {
+      "id": "TH-QUOTA-RESET-959078",
+      "timestamp": "2026-09-05T15:25:59.077Z",
+      "type": "SCAN",
+      "message": "[일일 AI 한도 초기화] 새 날짜(2026-09-06)가 시작되어 AI 일일 분석 한도(단기 18회 + 중장기 2회 = 총 20회)가 리셋되었습니다.",
+      "score": 99
+    },
+    {
       "id": "TH-QUOTA-RESET-134223",
       "timestamp": "2026-09-04T17:48:54.223Z",
       "type": "SCAN",
@@ -361,14 +368,16 @@
       "score": 95
     }
   ],
-  "lastBotTick": "2026-09-03T04:33:38.098Z",
+  "lastBotTick": "2026-09-05T15:25:59.085Z",
   "isAutoBotActive": true,
   "marketStatusKR": {
     "isOpen": false,
-    "statusText": "국내 증시 마감"
+    "statusText": "국내 증시 주말 휴장 (평일 09:00~15:30 정규장)",
+    "session": "WEEKEND"
   },
   "marketStatusUS": {
     "isOpen": false,
-    "statusText": "미국 증시 마감"
+    "statusText": "미국 증시 주말 휴장 (평일 23:30~06:00 KST)",
+    "session": "WEEKEND"
   }
 }
