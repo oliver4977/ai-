@@ -238,7 +238,7 @@
     }
   },
   "quotaUsage": {
-    "currentDate": "2026-09-06",
+    "currentDate": "2026-09-07",
     "dailyApiCalls": 0,
     "shortTermCalls": 0,
     "longTermCalls": 0,
@@ -329,6 +329,13 @@
   ],
   "liveThoughts": [
     {
+      "id": "TH-QUOTA-RESET-413552",
+      "timestamp": "2026-09-06T16:16:53.552Z",
+      "type": "SCAN",
+      "message": "[일일 AI 한도 초기화] 새 날짜(2026-09-07)가 시작되어 AI 일일 분석 한도(단기 18회 + 중장기 2회 = 총 20회)가 리셋되었습니다.",
+      "score": 99
+    },
+    {
       "id": "TH-GUARD-LT-959213",
       "timestamp": "2026-09-05T15:25:59.212Z",
       "ticker": "000270",
@@ -368,12 +375,12 @@
       "score": 95
     }
   ],
-  "lastBotTick": "2026-09-05T23:11:24.491Z",
+  "lastBotTick": "2026-09-06T16:16:53.632Z",
   "isAutoBotActive": true,
   "marketStatusKR": {
     "isOpen": false,
-    "statusText": "국내 증시 주말 휴장 (평일 09:00~15:30 정규장)",
-    "session": "WEEKEND"
+    "statusText": "국내 증시 마감 (다음 거래일 08:30 시작)",
+    "session": "CLOSED"
   },
   "marketStatusUS": {
     "isOpen": false,
