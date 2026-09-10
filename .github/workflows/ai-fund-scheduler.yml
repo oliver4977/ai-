@@ -2,7 +2,8 @@ name: Autonomous AI Fund Scheduler
 
 on:
   schedule:
-    # Runs every 15 minutes UTC (Continuous cloud monitoring)
+    # Runs every 15 minutes UTC. The worker itself enforces market/session,
+    # AI quota, strategy interval, and execution guards.
     - cron: '*/15 * * * *'
   workflow_dispatch:
 
@@ -24,20 +25,38 @@ jobs:
         uses: actions/checkout@v4
         with:
           persist-credentials: true
+          fetch-depth: 1
 
       - name: Setup Node.js Environment
         uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: npm
 
       - name: Install Dependencies
         run: npm install
 
+      - name: Verify Cloud Configuration
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          TOSS_CLIENT_ID: ${{ secrets.TOSS_CLIENT_ID || secrets.TOSS_API_KEY }}
+          TOSS_CLIENT_SECRET: ${{ secrets.TOSS_CLIENT_SECRET || secrets.TOSS_API_SECRET }}
+          TOSS_ACCOUNT_NO: ${{ secrets.TOSS_ACCOUNT_NO }}
+        run: |
+          test -n "$GEMINI_API_KEY" || { echo 'ERROR: GEMINI_API_KEY is missing'; exit 1; }
+          if [ -n "$TOSS_CLIENT_ID" ] && [ -n "$TOSS_CLIENT_SECRET" ]; then
+            echo 'Toss OpenAPI credentials detected.'
+          else
+            echo 'WARNING: Toss OpenAPI credentials are not configured; the market layer must use its non-Toss provider path.'
+          fi
+          node -v
+          npm -v
+
       - name: Run Cloud AI Autopilot Trading Step
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          TOSS_CLIENT_ID: ${{ secrets.TOSS_CLIENT_ID }}
-          TOSS_CLIENT_SECRET: ${{ secrets.TOSS_CLIENT_SECRET }}
+          TOSS_CLIENT_ID: ${{ secrets.TOSS_CLIENT_ID || secrets.TOSS_API_KEY }}
+          TOSS_CLIENT_SECRET: ${{ secrets.TOSS_CLIENT_SECRET || secrets.TOSS_API_SECRET }}
           TOSS_ACCOUNT_NO: ${{ secrets.TOSS_ACCOUNT_NO }}
         run: |
           npx tsx scripts/run-cloud-cron.ts
