@@ -3,6 +3,7 @@
  * Runs autonomously even when the local computer is powered off.
  */
 import { GoogleGenAI } from '@google/genai';
+import { INITIAL_STOCKS } from '../src/data/mockStocks';
 import {
   executeServerAutoTradeStep,
   loadServerFundState,
@@ -36,8 +37,13 @@ async function main() {
   const aiClient = new GoogleGenAI({ apiKey });
 
   try {
+    console.log(`📚 AI candidate universe loaded: ${INITIAL_STOCKS.length} stocks`);
     console.log('🔍 Executing AI Autonomous Scan & Decision Pipeline...');
-    const decision = await executeServerAutoTradeStep(aiClient);
+
+    // The worker defaults to an empty universe when no universe is supplied.
+    // Passing INITIAL_STOCKS is required for cloud autonomous scanning.
+    // Candidate prices are still resolved through getLiveStockQuotes before an AI decision/trade.
+    const decision = await executeServerAutoTradeStep(aiClient, INITIAL_STOCKS);
 
     if (decision) {
       console.log('✅ [AI DECISION EXECUTED]');
@@ -47,7 +53,7 @@ async function main() {
       console.log(`- Quantity: ${decision.quantity}`);
       console.log(`- Reason: ${decision.rawAIResponseSummary || decision.rationales?.technical || '자동 AI 판단'}`);
     } else {
-      console.log('ℹ️ Market conditions evaluated. AI decided to HOLD or market is closed.');
+      console.log('ℹ️ No AI trade executed: market closed, interval/quota guard active, no valid live quote, or AI returned HOLD.');
     }
 
     const stateAfter = getServerFundState();
