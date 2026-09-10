@@ -20,10 +20,9 @@ function getKstNow(): string {
 }
 
 /**
- * Toss's current market-data group has a low per-second request limit.
- * Fetch in small sequential batches so a cloud run does not create a burst
- * of dozens of simultaneous quote requests. The worker immediately reuses
- * these 4-second in-memory quotes, so it does not need to request them again.
+ * Build the candidate universe from provider-backed live quotes.
+ * This function is only called when at least one supported market is in
+ * regular trading hours, so closed-market cron runs do not waste API calls.
  */
 async function buildLiveCandidateUniverse() {
   const stocks = INITIAL_STOCKS.map((stock) => ({
@@ -40,7 +39,6 @@ async function buildLiveCandidateUniverse() {
     const batchQuotes = await getLiveStockQuotes(batch);
     Object.assign(mergedQuotes, batchQuotes);
 
-    // Keep a small gap between provider request bursts.
     if (i + BATCH_SIZE < stocks.length) {
       await new Promise((resolve) => setTimeout(resolve, 250));
     }
@@ -90,8 +88,19 @@ async function main() {
   }
 
   console.log('🔑 GEMINI_API_KEY detected successfully.');
-  console.log(`🇰🇷 KR session: ${JSON.stringify(getMarketSessionStatus('KR'))}`);
-  console.log(`🇺🇸 US session: ${JSON.stringify(getMarketSessionStatus('US'))}`);
+  const krSession = getMarketSessionStatus('KR');
+  const usSession = getMarketSessionStatus('US');
+  console.log(`🇰🇷 KR session: ${JSON.stringify(krSession)}`);
+  console.log(`🇺🇸 US session: ${JSON.stringify(usSession)}`);
+
+  // Do not even request market quotes when neither supported market is in
+  // REGULAR session. This preserves the AI quota and market-data quota while
+  // keeping the cloud worker alive on its normal 15-minute schedule.
+  if (krSession.session !== 'REGULAR' && usSession.session !== 'REGULAR') {
+    console.log('🌙 All supported markets are outside REGULAR session. Skipping live quotes, Gemini, and trading.');
+    console.log('🎉 Cloud execution completed safely with no market/API work required.');
+    return;
+  }
 
   const aiClient = new GoogleGenAI({ apiKey });
 
