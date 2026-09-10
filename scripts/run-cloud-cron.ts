@@ -20,29 +20,42 @@ function getKstNow(): string {
 }
 
 /**
- * The stock catalog is only a candidate universe (names/tickers/sectors).
- * Before the worker sees it, replace price/change/volume fields with the
- * freshest provider quote available. This prevents the static catalog from
- * influencing candidate ranking with stale demo prices.
+ * Toss's current market-data group has a low per-second request limit.
+ * Fetch in small sequential batches so a cloud run does not create a burst
+ * of dozens of simultaneous quote requests. The worker immediately reuses
+ * these 4-second in-memory quotes, so it does not need to request them again.
  */
 async function buildLiveCandidateUniverse() {
-  const quotes = await getLiveStockQuotes(
-    INITIAL_STOCKS.map((stock) => ({
-      ticker: stock.ticker,
-      market: stock.market,
-      name: stock.name,
-    }))
-  );
+  const stocks = INITIAL_STOCKS.map((stock) => ({
+    ticker: stock.ticker,
+    market: stock.market,
+    name: stock.name,
+  }));
+
+  const mergedQuotes: Record<string, any> = {};
+  const BATCH_SIZE = 5;
+
+  for (let i = 0; i < stocks.length; i += BATCH_SIZE) {
+    const batch = stocks.slice(i, i + BATCH_SIZE);
+    const batchQuotes = await getLiveStockQuotes(batch);
+    Object.assign(mergedQuotes, batchQuotes);
+
+    // Keep a small gap between provider request bursts.
+    if (i + BATCH_SIZE < stocks.length) {
+      await new Promise((resolve) => setTimeout(resolve, 250));
+    }
+  }
 
   const liveUniverse = INITIAL_STOCKS
     .map((stock) => {
-      const quote = quotes[stock.ticker];
+      const quote = mergedQuotes[stock.ticker];
       if (!quote || typeof quote.price !== 'number' || !Number.isFinite(quote.price) || quote.price <= 0) {
         return null;
       }
 
       return {
         ...stock,
+        // Candidate prices and momentum now come from the live provider.
         price: quote.price,
         change: quote.change,
         changePercent: quote.changePercent,
@@ -83,9 +96,8 @@ async function main() {
   const aiClient = new GoogleGenAI({ apiKey });
 
   try {
-    // Only live-provider data is passed into the autonomous worker.
-    // The worker still re-fetches and verifies the execution price immediately
-    // before every simulated BUY/SELL, so this is not a trade-price fallback.
+    // The catalog supplies only identity/metadata. All price/momentum fields
+    // used by the cloud worker are refreshed from live providers first.
     const liveUniverse = await buildLiveCandidateUniverse();
 
     if (liveUniverse.length === 0) {
@@ -115,7 +127,7 @@ async function main() {
     console.log('====================================================');
   } catch (err: any) {
     console.error('❌ Error during AI Cron Execution:', err?.message || err);
-    // Do not manufacture a trade or state change after an execution error.
+    // Never manufacture a trade or state change after an execution error.
     process.exitCode = 1;
   }
 }
