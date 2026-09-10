@@ -2,9 +2,9 @@ name: Autonomous AI Fund Scheduler
 
 on:
   schedule:
-    # Runs every 15 minutes UTC (Continuous 24/7 cloud monitoring)
+    # Runs every 15 minutes UTC (Continuous cloud monitoring)
     - cron: '*/15 * * * *'
-  workflow_dispatch: # Allows manual trigger from GitHub Actions tab
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -28,7 +28,7 @@ jobs:
       - name: Setup Node.js Environment
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
 
       - name: Install Dependencies
         run: npm install
@@ -36,8 +36,8 @@ jobs:
       - name: Run Cloud AI Autopilot Trading Step
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          TOSS_API_KEY: ${{ secrets.TOSS_API_KEY }}
-          TOSS_API_SECRET: ${{ secrets.TOSS_API_SECRET }}
+          TOSS_CLIENT_ID: ${{ secrets.TOSS_CLIENT_ID }}
+          TOSS_CLIENT_SECRET: ${{ secrets.TOSS_CLIENT_SECRET }}
           TOSS_ACCOUNT_NO: ${{ secrets.TOSS_ACCOUNT_NO }}
         run: |
           npx tsx scripts/run-cloud-cron.ts
@@ -55,4 +55,3 @@ jobs:
               echo "No state changes to commit."
             fi
           fi
-
