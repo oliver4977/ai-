@@ -15,7 +15,15 @@ import {
 } from '../src/types';
 import { getLiveStockQuotes, getMarketSessionStatus, getRealMarketNews } from './marketService';
 
-const DB_FILE = path.join(process.cwd(), 'server_fund_storage.json');
+const DB_FILE = process.env.FUND_STATE_FILE || path.join(process.cwd(), 'server_fund_storage.json');
+let fundOperationInProgress = false;
+
+async function withFundOperation<T>(operation: () => Promise<T>): Promise<T> {
+  if (fundOperationInProgress) throw new Error('다른 계좌 작업이 진행 중입니다. 잠시 후 다시 시도해 주세요.');
+  fundOperationInProgress = true;
+  try { return await operation(); } finally { fundOperationInProgress = false; }
+}
+
 
 // Initial Account States (Total 10억 = 단기 5억 + 중장기 5억)
 const INITIAL_SHORT_TERM_ACCOUNT: SimulationAccount = {
@@ -257,7 +265,7 @@ export function loadServerFundState(): ServerFundState {
         inMemoryState.longTermAccount = parsed.longTermAccount || { ...INITIAL_LONG_TERM_ACCOUNT };
         inMemoryState.account = parsed.account || { ...INITIAL_MASTER_ACCOUNT };
         inMemoryState.masterAccount = parsed.masterAccount || inMemoryState.account;
-        inMemoryState.quotaUsage = parsed.quotaUsage || { ...INITIAL_QUOTA };
+        inMemoryState.quotaUsage = { ...INITIAL_QUOTA, ...parsed.quotaUsage };
         inMemoryState.decisions = Array.isArray(parsed.decisions) ? parsed.decisions : [];
         inMemoryState.shortTermDecisions = Array.isArray(parsed.shortTermDecisions) ? parsed.shortTermDecisions : [];
         inMemoryState.longTermDecisions = Array.isArray(parsed.longTermDecisions) ? parsed.longTermDecisions : [];
@@ -269,20 +277,19 @@ export function loadServerFundState(): ServerFundState {
         recalculateAllAccountValuationsSync();
         return inMemoryState;
       }
+      throw new Error("계좌 저장 파일 형식이 올바르지 않습니다.");
     }
   } catch (err) {
-    console.error('Failed to load server fund state from disk:', err);
+    throw new Error('계좌 저장 파일을 읽을 수 없습니다. 원본을 보존하고 시작을 중단합니다.', { cause: err });
   }
   saveServerFundState();
   return inMemoryState;
 }
 
 export function saveServerFundState() {
-  try {
-    fs.writeFileSync(DB_FILE, JSON.stringify(inMemoryState, null, 2), 'utf-8');
-  } catch (err) {
-    console.error('Failed to persist server fund state to disk:', err);
-  }
+  const temporaryFile = `${DB_FILE}.${process.pid}.tmp`;
+  fs.writeFileSync(temporaryFile, JSON.stringify(inMemoryState, null, 2), 'utf-8');
+  fs.renameSync(temporaryFile, DB_FILE);
 }
 
 export function updateHoldingsMarketPrices(pricesMap: Record<string, number>, liveExchangeRate?: number): boolean {
@@ -532,16 +539,20 @@ export interface TradeExecutionResult {
 }
 
 export async function executeManualTrade(req: ManualTradeRequest): Promise<TradeExecutionResult> {
+  return withFundOperation(() => executeManualTradeUnlocked(req));
+}
+
+async function executeManualTradeUnlocked(req: ManualTradeRequest): Promise<TradeExecutionResult> {
   const isKR = req.market === 'KR' || /^\d{6}$/.test(req.ticker);
   const marketType: 'KR' | 'US' = isKR ? 'KR' : 'US';
   const sessionInfo = getMarketSessionStatus(marketType);
 
-  if (req.quantity <= 0) {
+  if (!Number.isSafeInteger(req.quantity) || req.quantity <= 0 || !['BUY', 'SELL'].includes(req.side)) {
     return {
       success: false,
       rejected: true,
       executionStatus: 'ERROR',
-      message: '주문 수량은 0보다 커야 합니다.',
+      message: '올바른 매수/매도 구분과 양의 정수 수량이 필요합니다.',
     };
   }
 
@@ -738,6 +749,8 @@ export async function executeManualTrade(req: ManualTradeRequest): Promise<Trade
 
 // Reset both accounts with 5:5 5억원 split (or custom total capital)
 export function resetServerFundState(totalCapital: number = 1000000000): ServerFundState {
+  if (fundOperationInProgress) throw new Error("계좌 작업 중에는 초기화할 수 없습니다.");
+  if (!Number.isFinite(totalCapital) || totalCapital < 0) throw new Error("초기 자본이 올바르지 않습니다.");
   const cap = typeof totalCapital === 'number' && totalCapital >= 0 ? totalCapital : 1000000000;
   const halfCap = Math.round(cap / 2);
 
@@ -800,7 +813,7 @@ export function updateServerAutoTradeStatus(enabled: boolean): ServerFundState {
 // -------------------------------------------------------------------------------------------------
 // 1. SHORT-TERM TRADING AI ENGINE (1시간 주기 최대 1회, 일 최대 18회, 시장 운영시간 내)
 // -------------------------------------------------------------------------------------------------
-async function executeShortTermAITradeStep(aiClient: any, universe: StockItem[] = []): Promise<AIFundDecision | null> {
+async function executeShortTermAITradeStep(aiClient: any, universe: StockItem[] = [], autonomous = false): Promise<AIFundDecision | null> {
   const account = inMemoryState.shortTermAccount;
   const rate = account.exchangeRateUSD_KRW || 1400;
   const isKROpen = inMemoryState.marketStatusKR.isOpen;
@@ -822,28 +835,21 @@ async function executeShortTermAITradeStep(aiClient: any, universe: StockItem[] 
     return null;
   }
 
-  // Sort candidates by momentum (24h change % magnitude or volume)
-  const sortedUniverse = [...openUniverse].sort((a, b) => {
-    const changeA = Math.abs(typeof a.changePercent === 'number' ? a.changePercent : 0);
-    const changeB = Math.abs(typeof b.changePercent === 'number' ? b.changePercent : 0);
-    return changeB - changeA;
-  });
-
-  const candidateList = sortedUniverse.slice(0, 10);
-  const candidateQuotes = await getLiveStockQuotes(
-    candidateList.map((c) => ({ ticker: c.ticker, market: c.market, name: c.name }))
-  );
-
-  // Filter candidates to ONLY those with verified real-time live quotes (price > 0)
-  const validCandidates = candidateList.filter((c) => {
-    const q = candidateQuotes[c.ticker];
-    return q && typeof q.price === 'number' && q.price > 0;
-  });
-
-  if (validCandidates.length === 0) {
-    console.warn('[Short-term AI] No candidates with valid real-time quotes found. Skipping AI call.');
-    return null;
+  const liveUniverse: StockItem[] = [];
+  for (let i = 0; i < openUniverse.length; i += 35) {
+    const batch = openUniverse.slice(i, i + 35);
+    const quotes = await getLiveStockQuotes(batch);
+    for (const stock of batch) {
+      const quote = quotes[stock.ticker];
+      if (!quote || !Number.isFinite(quote.price) || quote.price <= 0) continue;
+      liveUniverse.push({ ...stock, price: quote.price, change: quote.change,
+        changePercent: quote.changePercent, volume: quote.volume });
+    }
   }
+  const candidateList = liveUniverse.sort((a, b) => Math.abs(b.changePercent) - Math.abs(a.changePercent)).slice(0, 10);
+  const candidateQuotes = await getLiveStockQuotes(candidateList);
+  const validCandidates = candidateList.filter((c) => Number.isFinite(candidateQuotes[c.ticker]?.price) && candidateQuotes[c.ticker].price > 0);
+  if (!validCandidates.length) return null;
 
   // Fetch real breaking market news for top items
   const sampleTickersToNews = [
@@ -874,8 +880,8 @@ async function executeShortTermAITradeStep(aiClient: any, universe: StockItem[] 
       market: c.market,
       exchange: c.exchange,
       price: q.price,
-      changePercent: q.changePercent ?? c.changePercent,
-      volume: q.volume || c.volume,
+      changePercent: q.changePercent,
+      volume: q.volume,
       sector: c.sector || '일반',
       news: newsMap[c.ticker] || '일반 시황',
     };
@@ -923,6 +929,9 @@ ${JSON.stringify(candidateDataFormatted, null, 2)}
 [의사결정 요구사항]
 위 실시간 데이터와 단기 계좌 현황을 바탕으로 BUY, SELL, HOLD 결정을 JSON 형식으로 내리십시오.
 `;
+
+  const lastAttempt = Math.max(inMemoryState.quotaUsage.lastShortTermCallTime || 0, inMemoryState.quotaUsage.lastLongTermCallTime || 0);
+  if (Date.now() - lastAttempt < ERROR_COOLDOWN_MS) return null;
 
   // Check quota limit before attempting call
   if (inMemoryState.quotaUsage.dailyApiCalls >= 20 || inMemoryState.quotaUsage.shortTermCalls >= 18) {
@@ -1029,6 +1038,7 @@ ${JSON.stringify(candidateDataFormatted, null, 2)}
 
     // Strictly fetch fresh live execution quote right before execution - NO FALLBACK
     const livePrice = await fetchVerifiedLiveExecutionPrice(holdingToSell.ticker, holdingToSell.market, holdingToSell.name);
+    if (autonomous && !inMemoryState.isAutoBotActive) return null;
     if (!livePrice || typeof livePrice !== 'number' || isNaN(livePrice) || !isFinite(livePrice) || livePrice <= 0) {
       console.warn(`[ORDER_VALIDATED]\nrequestId: ${requestId}\nstatus: REJECTED\nreason: Real-time live quote unavailable for SELL ${holdingToSell.ticker}`);
       saveServerFundState();
@@ -1161,6 +1171,7 @@ ${JSON.stringify(candidateDataFormatted, null, 2)}
 
     // Strictly re-fetch verified live execution price right before BUY execution - No mock fallback
     const freshLivePrice = await fetchVerifiedLiveExecutionPrice(targetCandidate.ticker, targetCandidate.market, targetCandidate.name);
+    if (autonomous && !inMemoryState.isAutoBotActive) return null;
     if (!freshLivePrice || typeof freshLivePrice !== 'number' || isNaN(freshLivePrice) || !isFinite(freshLivePrice) || freshLivePrice <= 0) {
       console.warn(`[ORDER_VALIDATED]\nrequestId: ${requestId}\nstatus: REJECTED\nreason: Real-time live execution price unavailable for BUY ${targetCandidate.ticker}`);
       saveServerFundState();
@@ -1334,7 +1345,8 @@ ${JSON.stringify(candidateDataFormatted, null, 2)}
 async function executeLongTermAITradeStep(
   aiClient: any, 
   universe: StockItem[] = [], 
-  slotName: '09:00' | '18:00' = '09:00'
+  slotName: '09:00' | '18:00' = '09:00',
+  autonomous = false
 ): Promise<AIFundDecision | null> {
   const account = inMemoryState.longTermAccount;
   const rate = account.exchangeRateUSD_KRW || 1400;
@@ -1348,7 +1360,7 @@ async function executeLongTermAITradeStep(
     return false;
   });
 
-  const targetUniverse = openUniverse.length > 0 ? openUniverse : universe;
+  const targetUniverse = openUniverse;
   if (targetUniverse.length === 0) {
     return null;
   }
@@ -1401,9 +1413,9 @@ async function executeLongTermAITradeStep(
       market: c.market,
       exchange: c.exchange,
       price: q.price,
-      changePercent: q.changePercent ?? c.changePercent,
+      changePercent: q.changePercent,
       sector: c.sector || '우량주',
-      marketCap: q.marketCap || c.marketCap,
+      marketCap: q.marketCap || '확인 불가',
       news: newsMap[c.ticker] || '기업 기본 분석',
     };
   });
@@ -1450,6 +1462,9 @@ ${JSON.stringify(candidateDataFormatted, null, 2)}
 [의사결정 요구사항]
 위 실시간 데이터와 중장기 계좌 현황을 바탕으로 BUY, SELL, HOLD 결정을 JSON 형식으로 내리십시오.
 `;
+
+  const lastAttempt = Math.max(inMemoryState.quotaUsage.lastShortTermCallTime || 0, inMemoryState.quotaUsage.lastLongTermCallTime || 0);
+  if (Date.now() - lastAttempt < ERROR_COOLDOWN_MS) return null;
 
   // Pre-check quota
   if (inMemoryState.quotaUsage.dailyApiCalls >= 20 || inMemoryState.quotaUsage.longTermCalls >= 2) {
@@ -1561,6 +1576,7 @@ ${JSON.stringify(candidateDataFormatted, null, 2)}
 
     // Strictly fetch fresh live execution quote right before execution - NO FALLBACK
     const livePrice = await fetchVerifiedLiveExecutionPrice(holdingToSell.ticker, holdingToSell.market, holdingToSell.name);
+    if (autonomous && !inMemoryState.isAutoBotActive) return null;
     if (!livePrice || typeof livePrice !== 'number' || isNaN(livePrice) || !isFinite(livePrice) || livePrice <= 0) {
       console.warn(`[Long-term AI] SELL ${symbol} rejected: live quote unavailable.`);
       saveServerFundState();
@@ -1692,6 +1708,7 @@ ${JSON.stringify(candidateDataFormatted, null, 2)}
 
     // Strictly re-fetch verified live execution price right before BUY execution - No mock fallback
     const freshLivePrice = await fetchVerifiedLiveExecutionPrice(targetCandidate.ticker, targetCandidate.market, targetCandidate.name);
+    if (autonomous && !inMemoryState.isAutoBotActive) return null;
     if (!freshLivePrice || typeof freshLivePrice !== 'number' || isNaN(freshLivePrice) || !isFinite(freshLivePrice) || freshLivePrice <= 0) {
       console.warn(`[Long-term AI] BUY ${symbol} rejected: invalid live execution price.`);
       saveServerFundState();
@@ -1862,12 +1879,23 @@ ${JSON.stringify(candidateDataFormatted, null, 2)}
 // 3. MASTER 24H AUTONOMOUS ORCHESTRATOR
 // -------------------------------------------------------------------------------------------------
 export async function executeServerAutoTradeStep(aiClient: any, universe: StockItem[] = []): Promise<AIFundDecision | null> {
+  if (fundOperationInProgress) return null;
+  return withFundOperation(() => executeServerAutoTradeStepUnlocked(aiClient, universe));
+}
+
+async function executeServerAutoTradeStepUnlocked(aiClient: any, universe: StockItem[]): Promise<AIFundDecision | null> {
   const krSession = getMarketSessionStatus('KR');
   const usSession = getMarketSessionStatus('US');
 
   inMemoryState.marketStatusKR = krSession;
   inMemoryState.marketStatusUS = usSession;
   inMemoryState.lastBotTick = new Date().toISOString();
+
+  checkAndResetDailyQuota();
+  if (!inMemoryState.isAutoBotActive) {
+    saveServerFundState();
+    return null;
+  }
 
   // 1. Recalculate valuations with live market prices & Execute Hard Stop-Loss / Take-Profit Triggers (15s Real-Time Guard)
   const allHoldings = [
@@ -1896,7 +1924,7 @@ export async function executeServerAutoTradeStep(aiClient: any, universe: StockI
           const isStopLossTriggered = Boolean(h.aiStopLoss && h.currentPrice <= h.aiStopLoss);
           const isTakeProfitTriggered = Boolean(h.aiTargetPrice && h.currentPrice >= h.aiTargetPrice);
 
-          if (isStopLossTriggered || isTakeProfitTriggered) {
+          if (inMemoryState.isAutoBotActive && (isKR ? krSession : usSession).session === 'REGULAR' && Number.isFinite(h.currentPrice) && (isStopLossTriggered || isTakeProfitTriggered)) {
             const reasonType = isStopLossTriggered ? '하드 손절(Stop-Loss)' : '목표가 익절(Take-Profit)';
             const sellPrice = h.currentPrice;
             const singleKRW = isKR ? sellPrice : sellPrice * rate;
@@ -1955,7 +1983,7 @@ export async function executeServerAutoTradeStep(aiClient: any, universe: StockI
           const isStopLossTriggered = Boolean(h.aiStopLoss && h.currentPrice <= h.aiStopLoss);
           const isTakeProfitTriggered = Boolean(h.aiTargetPrice && h.currentPrice >= h.aiTargetPrice);
 
-          if (isStopLossTriggered || isTakeProfitTriggered) {
+          if (inMemoryState.isAutoBotActive && (isKR ? krSession : usSession).session === 'REGULAR' && Number.isFinite(h.currentPrice) && (isStopLossTriggered || isTakeProfitTriggered)) {
             const reasonType = isStopLossTriggered ? '구조적 손절(Structural Stop-Loss)' : '적정가치 도달 익절(Intrinsic Target)';
             const sellPrice = h.currentPrice;
             const singleKRW = isKR ? sellPrice : sellPrice * rate;
@@ -2072,7 +2100,7 @@ export async function executeServerAutoTradeStep(aiClient: any, universe: StockI
     const slotToRun = is18SlotEligible ? '18:00' : '09:00';
     try {
       console.log(`[AI Fund Worker] Executing Long-Term AI Strategy for slot ${slotToRun}...`);
-      const dec = await executeLongTermAITradeStep(aiClient, universe, slotToRun);
+      const dec = await executeLongTermAITradeStep(aiClient, universe, slotToRun, true);
       return dec;
     } catch (err: any) {
       console.error('[Long-term AI] Error:', err);
@@ -2097,14 +2125,14 @@ export async function executeServerAutoTradeStep(aiClient: any, universe: StockI
   const reservedForLongTerm = Math.max(0, 2 - longTermCalls);
   const availableForShortTerm = 20 - inMemoryState.quotaUsage.dailyApiCalls - reservedForLongTerm;
 
-  // Enforce 5-minute cooldown on failure or 1-hour interval on normal cycle
-  const minRequiredInterval = inMemoryState.quotaUsage.lastShortTermFailed ? ERROR_COOLDOWN_MS : SHORT_TERM_INTERVAL_MS;
+  // Failed attempts also count toward the once-per-hour strategy schedule.
+  const minRequiredInterval = SHORT_TERM_INTERVAL_MS;
 
   if (shortTermCalls < 18 && availableForShortTerm > 0 && inMemoryState.quotaUsage.dailyApiCalls < 20) {
     if (timeSinceLastShortTerm >= minRequiredInterval) {
       try {
         console.log(`[AI Fund Worker] Executing Short-Term AI Strategy (Call ${shortTermCalls + 1}/18)...`);
-        const dec = await executeShortTermAITradeStep(aiClient, universe);
+        const dec = await executeShortTermAITradeStep(aiClient, universe, true);
         return dec;
       } catch (err: any) {
         console.error('[Short-term AI] Error:', err);
@@ -2140,26 +2168,32 @@ export async function executeManualAIScan(
   strategyTrack: 'DAY_TRADE_MOMENTUM' | 'VALUE_COMPOUNDING' = 'DAY_TRADE_MOMENTUM', 
   universe: StockItem[] = []
 ): Promise<AIFundDecision | null> {
-  checkAndResetDailyQuota();
+  return withFundOperation(async () => {
+    checkAndResetDailyQuota();
+    if (!aiClient) throw new Error('AI API 키가 설정되지 않았습니다.');
+    const lastAttempt = Math.max(inMemoryState.quotaUsage.lastShortTermCallTime || 0, inMemoryState.quotaUsage.lastLongTermCallTime || 0);
+    if (Date.now() - lastAttempt < ERROR_COOLDOWN_MS) throw new Error('AI 호출 후 5분 대기 중입니다.');
+    if (strategyTrack === 'DAY_TRADE_MOMENTUM' && Date.now() - (inMemoryState.quotaUsage.lastShortTermCallTime || 0) < SHORT_TERM_INTERVAL_MS) throw new Error('단기 분석은 성공 여부와 관계없이 시간당 1회입니다.');
 
-  inMemoryState.marketStatusKR = getMarketSessionStatus('KR');
-  inMemoryState.marketStatusUS = getMarketSessionStatus('US');
+    inMemoryState.marketStatusKR = getMarketSessionStatus('KR');
+    inMemoryState.marketStatusUS = getMarketSessionStatus('US');
 
-  if (inMemoryState.quotaUsage.dailyApiCalls >= 20) {
-    throw new Error('오늘의 AI 분석 횟수(20/20회)를 모두 사용했습니다. 다음 분석은 내일 다시 시작됩니다.');
-  }
-
-  if (strategyTrack === 'VALUE_COMPOUNDING') {
-    if (inMemoryState.quotaUsage.longTermCalls >= 2) {
-      throw new Error('오늘 중장기 가치투자 AI 분석 한도(2/2회)를 모두 사용했습니다.');
+    if (inMemoryState.quotaUsage.dailyApiCalls >= 20) {
+      throw new Error('오늘의 AI 분석 횟수(20/20회)를 모두 사용했습니다. 다음 분석은 내일 다시 시작됩니다.');
     }
-    const { hour: kstHour } = getKstHourMinute();
-    const slot = kstHour >= 18 ? '18:00' : '09:00';
-    return await executeLongTermAITradeStep(aiClient, universe, slot);
-  } else {
-    if (inMemoryState.quotaUsage.shortTermCalls >= 18) {
-      throw new Error('오늘 단기 트레이딩 AI 분석 한도(18/18회)를 모두 사용했습니다.');
+
+    if (strategyTrack === 'VALUE_COMPOUNDING') {
+      if (inMemoryState.quotaUsage.longTermCalls >= 2) {
+        throw new Error('오늘 중장기 가치투자 AI 분석 한도(2/2회)를 모두 사용했습니다.');
+      }
+      const { hour: kstHour } = getKstHourMinute();
+      const slot = kstHour >= 18 ? '18:00' : '09:00';
+      return await executeLongTermAITradeStep(aiClient, universe, slot);
+    } else {
+      if (inMemoryState.quotaUsage.shortTermCalls >= 18) {
+        throw new Error('오늘 단기 트레이딩 AI 분석 한도(18/18회)를 모두 사용했습니다.');
+      }
+      return await executeShortTermAITradeStep(aiClient, universe);
     }
-    return await executeShortTermAITradeStep(aiClient, universe);
-  }
+  });
 }

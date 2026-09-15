@@ -695,7 +695,7 @@ ${userMessage}
   });
 
   // Start 24H Background Autonomous Trade Engine Timer (Runs every 15 seconds)
-  setInterval(async () => {
+  if (process.env.FUND_WORKER_ENABLED !== "false") setInterval(async () => {
     try {
       await executeServerAutoTradeStep(ai, INITIAL_STOCKS);
     } catch (err) {

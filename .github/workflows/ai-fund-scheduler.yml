@@ -34,7 +34,7 @@ jobs:
           cache: npm
 
       - name: Install Dependencies
-        run: npm install
+        run: npm ci
 
       - name: Verify Cloud Configuration
         env:
@@ -62,6 +62,7 @@ jobs:
           npx tsx scripts/run-cloud-cron.ts
 
       - name: Persist Updated Trading State
+        if: ${{ !cancelled() }}
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
